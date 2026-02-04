@@ -1,5 +1,6 @@
 {
   "name": "Ahmed Mo Space",
+  "version": "1.0.1",
   "description": "A centralized productivity workspace to organize links, tasks, Google Sheets, and sticky notes in one place. Features AI-powered Smart Capture to automatically sort your messy thoughts into structured data.",
   "requestFramePermissions": []
 }
