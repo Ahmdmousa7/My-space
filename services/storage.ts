@@ -1,6 +1,10 @@
 import { AppState } from '../types';
+import { db } from './firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
-const STORAGE_KEY = 'focus1_app_data';
+// For this MVP, we use a single shared document.
+// In a real app with Auth, this would be `users/${userId}`.
+const DOC_REF = doc(db, 'workspaces', 'default');
 
 const INITIAL_STATE: AppState = {
   tasks: [
@@ -19,21 +23,32 @@ const INITIAL_STATE: AppState = {
   ],
 };
 
+// Original loadState is deprecated in favor of subscription
 export const loadState = (): AppState => {
-  try {
-    const serialized = localStorage.getItem(STORAGE_KEY);
-    if (!serialized) return INITIAL_STATE;
-    return JSON.parse(serialized);
-  } catch (e) {
-    console.error('Failed to load state', e);
-    return INITIAL_STATE;
-  }
+  return INITIAL_STATE;
 };
 
-export const saveState = (state: AppState) => {
+export const subscribeToState = (callback: (data: AppState) => void) => {
+  return onSnapshot(DOC_REF, (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as AppState);
+    } else {
+      // If doc doesn't exist, create it with initial state
+      setDoc(DOC_REF, INITIAL_STATE);
+      callback(INITIAL_STATE);
+    }
+  }, (error) => {
+    console.error("Error subscribing to state:", error);
+  });
+};
+
+export const saveState = async (state: AppState) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const stateToSave = { ...state, lastUpdated: Date.now() };
+    // Ensure no undefined values are sent to Firestore (it rejects them)
+    const cleanState = JSON.parse(JSON.stringify(stateToSave));
+    await setDoc(DOC_REF, cleanState);
   } catch (e) {
-    console.error('Failed to save state', e);
+    console.error('Failed to save state to Firestore', e);
   }
 };

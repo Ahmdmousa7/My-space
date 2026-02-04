@@ -40,6 +40,7 @@ export interface AppState {
   links: LinkItem[];
   sheets: SheetItem[];
   notes: StickyNote[];
+  lastUpdated?: number;
 }
 
 export const COLORS = {
