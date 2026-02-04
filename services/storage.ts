@@ -1,10 +1,15 @@
 import { AppState } from '../types';
 import { db } from './firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { ensureAuth } from './authService';
 
-// For this MVP, we use a single shared document.
-// In a real app with Auth, this would be `users/${userId}`.
-const DOC_REF = doc(db, 'workspaces', 'default');
+// Get user-specific document reference
+const getUserDocRef = async () => {
+  console.log('[Storage] Getting user document reference...');
+  const userId = await ensureAuth();
+  console.log('[Storage] Using userId:', userId);
+  return doc(db, 'workspaces', userId);
+};
 
 const INITIAL_STATE: AppState = {
   tasks: [
@@ -28,13 +33,14 @@ export const loadState = (): AppState => {
   return INITIAL_STATE;
 };
 
-export const subscribeToState = (callback: (data: AppState) => void) => {
-  return onSnapshot(DOC_REF, (docSnap) => {
+export const subscribeToState = async (callback: (data: AppState) => void) => {
+  const docRef = await getUserDocRef();
+  return onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
       callback(docSnap.data() as AppState);
     } else {
       // If doc doesn't exist, create it with initial state
-      setDoc(DOC_REF, INITIAL_STATE);
+      setDoc(docRef, INITIAL_STATE);
       callback(INITIAL_STATE);
     }
   }, (error) => {
@@ -44,10 +50,11 @@ export const subscribeToState = (callback: (data: AppState) => void) => {
 
 export const saveState = async (state: AppState) => {
   try {
+    const docRef = await getUserDocRef();
     const stateToSave = { ...state, lastUpdated: Date.now() };
     // Ensure no undefined values are sent to Firestore (it rejects them)
     const cleanState = JSON.parse(JSON.stringify(stateToSave));
-    await setDoc(DOC_REF, cleanState);
+    await setDoc(docRef, cleanState);
   } catch (e) {
     console.error('Failed to save state to Firestore', e);
   }

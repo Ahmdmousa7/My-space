@@ -31,8 +31,10 @@ const App: React.FC = () => {
 
   // Subscribe to real-time updates
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
     // Initial load and listen for changes
-    const unsubscribe = subscribeToState((newData) => {
+    subscribeToState((newData) => {
       // Conflict Resolution:
       // If the incoming data is OLDER than what we have locally (because we are typing), ignore it.
       // This prevents the "reverting" bug.
@@ -55,8 +57,15 @@ const App: React.FC = () => {
         // Otherwise, keep our local version
         return currentData;
       });
+    }).then(unsub => {
+      unsubscribe = unsub;
     });
-    return () => unsubscribe();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [isLoading]);
 
   // Helper to update local state. The effect above handles saving.
@@ -103,7 +112,7 @@ const App: React.FC = () => {
       <div className="flex flex-col h-screen items-center justify-center bg-slate-50 p-4">
         <div className="text-center max-w-md">
           <div className="w-8 h-8 border-4 border-slate-300 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 font-medium mb-4">Connecting to Cloud...</p>
+          <p className="text-slate-600 font-medium mb-4">Authenticating & Connecting to Cloud...</p>
 
           <div className="text-sm text-slate-500 bg-white p-4 rounded-lg border border-slate-200 shadow-sm animate-in fade-in duration-1000 slide-in-from-bottom-4" style={{ animationDelay: '5s', animationFillMode: 'both' }}>
             <p className="font-semibold text-orange-600 mb-2">Taking too long?</p>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { 
+            background: #4285f4; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover { background: #357ae8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Firebase Authentication Diagnostic</h1>
+        <p>This page will test your Firebase Authentication setup.</p>
+        
+        <button onclick="runTest()">Run Authentication Test</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCNDxEj-vhDhkMpmNK0CvvoIMmPo2EGLDI",
+            authDomain: "ahmed-mo-space.firebaseapp.com",
+            projectId: "ahmed-mo-space",
+            storageBucket: "ahmed-mo-space.firebasestorage.app",
+            messagingSenderId: "696776097102",
+            appId: "1:696776097102:web:850e0d84abd76be8e3721f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.runTest = async function() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div class="status info">Running tests...</div>';
+            
+            let html = '';
+            
+            try {
+                // Test 1: Anonymous Sign-In
+                html += '<h2>Test 1: Anonymous Authentication</h2>';
+                const userCredential = await signInAnonymously(auth);
+                const user = userCredential.user;
+                html += `<div class="status success">✅ Authentication successful!<br>User ID: ${user.uid}</div>`;
+                
+                // Test 2: Firestore Write
+                html += '<h2>Test 2: Firestore Write Permission</h2>';
+                const testDoc = doc(db, 'workspaces', user.uid);
+                await setDoc(testDoc, { test: true, timestamp: Date.now() });
+                html += '<div class="status success">✅ Write permission granted!</div>';
+                
+                // Test 3: Firestore Read
+                html += '<h2>Test 3: Firestore Read Permission</h2>';
+                const docSnap = await getDoc(testDoc);
+                if (docSnap.exists()) {
+                    html += '<div class="status success">✅ Read permission granted!<br>Data: <pre>' + JSON.stringify(docSnap.data(), null, 2) + '</pre></div>';
+                }
+                
+                html += '<h2>✅ All Tests Passed!</h2>';
+                html += '<div class="status success">Your Firebase setup is correct! The app should work now.</div>';
+                
+            } catch (error) {
+                html += '<h2>❌ Test Failed</h2>';
+                html += `<div class="status error">
+                    <strong>Error Code:</strong> ${error.code}<br>
+                    <strong>Error Message:</strong> ${error.message}<br>
+                    <pre>${JSON.stringify(error, null, 2)}</pre>
+                </div>`;
+                
+                if (error.code === 'auth/operation-not-allowed') {
+                    html += `<div class="status error">
+                        <strong>❌ Anonymous Authentication is NOT enabled!</strong><br><br>
+                        <strong>Fix:</strong><br>
+                        1. Go to <a href="https://console.firebase.google.com/project/ahmed-mo-space/authentication/providers" target="_blank">Firebase Console - Authentication</a><br>
+                        2. Click on "Sign-in method" tab<br>
+                        3. Find "Anonymous" and click on it<br>
+                        4. Toggle "Enable" switch<br>
+                        5. Click "Save"
+                    </div>`;
+                } else if (error.code === 'permission-denied' || error.message.includes('permission')) {
+                    html += `<div class="status error">
+                        <strong>❌ Firestore Security Rules are NOT updated!</strong><br><br>
+                        <strong>Fix:</strong><br>
+                        1. Go to <a href="https://console.firebase.google.com/project/ahmed-mo-space/firestore/rules" target="_blank">Firebase Console - Firestore Rules</a><br>
+                        2. Replace the rules with the correct ones (see FIREBASE_SECURITY_SETUP.md)<br>
+                        3. Click "Publish"
+                    </div>`;
+                }
+            }
+            
+            results.innerHTML = html;
+        };
+    </script>
+</body>
+</html>
